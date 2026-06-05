@@ -1,0 +1,26 @@
+# app
+streamlit
+
+# utilities
+numpy
+pandas
+setuptools<70.0.0
+
+# face recognition
+scikit-learn
+dlib
+face-recognition-models
+
+# auth & database
+supabase==2.10.0
+bcrypt
+
+# voice/audio
+resemblyzer
+librosa
+soundfile
+opencv-python-headless
+
+# QR & image
+segno
+pillow

@@ -11,6 +11,7 @@ __pycache__/
 
 # Environment files
 .env
+*.log
 
 # Streamlit secrets
 .streamlit/secrets.toml
@@ -22,8 +23,6 @@ __pycache__/
 dataset/
 datasets/
 data/
-*.jpg
-*.png
 
 # OS files
 .DS_Store

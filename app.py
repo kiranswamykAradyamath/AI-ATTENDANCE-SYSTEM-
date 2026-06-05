@@ -17,6 +17,10 @@ def main() -> None:
 
     login_type = st.session_state.get("login_type")
     try:
+        join_code = st.query_params.get("subject")
+        if join_code:
+            auto_enroll_dialog(join_code)
+
         if login_type == "student":
             student_screen()
         elif login_type == "teacher":
