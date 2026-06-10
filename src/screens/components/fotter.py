@@ -5,12 +5,12 @@ import streamlit as st
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-FOOTER_LOGO_PATH = str(PROJECT_ROOT / "assets" / "footer_logo.png")
+FOOTER_LOGO_PATH = str(PROJECT_ROOT / "assets" / "fotter_logo.png")
 FOOTER_LOGO_ZOOM = 1.35
 
 
 @st.cache_data(show_spinner=False)
-def _logo_data_uri(path: str) -> str:
+def _logo_data_uri(path: str, cache_key: int | None) -> str:
     file_path = Path(path)
     if not file_path.exists() or not file_path.is_file():
         return ""
@@ -18,12 +18,19 @@ def _logo_data_uri(path: str) -> str:
     return f"data:image/png;base64,{encoded}"
 
 
+def _logo_cache_key(path: str) -> int | None:
+    file_path = Path(path)
+    if not file_path.exists() or not file_path.is_file():
+        return None
+    return file_path.stat().st_mtime_ns
+
+
 def render_footer():
-    img_src = _logo_data_uri(FOOTER_LOGO_PATH)
+    img_src = _logo_data_uri(FOOTER_LOGO_PATH, _logo_cache_key(FOOTER_LOGO_PATH))
     creator_mark = (
         f'<img class="creator-footer-img" src="{img_src}" alt="KIRAN_SWAMY" />'
         if img_src
-        else '<span class="creator-footer-name">KIRAN_SWAMY</span>'
+        else '<span class="creator-footer-name">Logo Not Found</span>'
     )
 
     st.markdown(
