@@ -2,12 +2,14 @@ import streamlit as st
 
 import segno
 import io
+from urllib.parse import urlencode
 
 
 @st.dialog("Share Class Link")
 def share_subject_dialog(subject_name, subject_code):
-    app_domain = "AI ATTENDANCE SYSTEM-main.streamlit.app"
-    join_url = f"{app_domain}/join?subject_code={subject_code}"
+    app_url = getattr(st.context, "url", "") or "https://ai-attendance-system-new-one.streamlit.app"
+    app_base_url = app_url.split("?", 1)[0].rstrip("/")
+    join_url = f"{app_base_url}?{urlencode({'subject': subject_code})}"
 
     st.header("Scan to join the Subject")
 
