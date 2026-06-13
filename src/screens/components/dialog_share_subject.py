@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 def share_subject_dialog(subject_name, subject_code):
     app_url = getattr(st.context, "url", "") or "https://ai-attendance-system-new-one.streamlit.app"
     app_base_url = app_url.split("?", 1)[0].rstrip("/")
-    join_url = f"{app_base_url}?{urlencode({'subject': subject_code})}"
+    join_url = f"{app_base_url}?{urlencode({'join-code': subject_code})}"
 
     st.header("Scan to join the Subject")
 
@@ -24,12 +24,12 @@ def share_subject_dialog(subject_name, subject_code):
         st.markdown("### Copy Link")
         st.code(join_url, language="text")
         st.code(subject_code, language="text")
-        st.info("Copy this link to share on Whatsapp or Email")
+        st.info("Copy this link to share on WhatsApp or email")
 
     with col2:
         st.markdown("### Scan to Join")
         st.image(
             img_buffer.getvalue(),
             width="stretch",
-            caption=f"QRCode for joining {subject_name}",
+            caption=f"QR code for joining {subject_name}",
         )

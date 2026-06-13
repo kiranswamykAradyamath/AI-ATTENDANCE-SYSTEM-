@@ -1,13 +1,26 @@
-import dlib
 import numpy as np
-import face_recognition_models
 import streamlit as st
 
 from src.database.db import get_all_students
 
+FACE_MODEL_NAME = "VGG-Face"
+FACE_DETECTOR_BACKEND = "opencv"
+FACE_DISTANCE_THRESHOLD = 0.8
+DLIB_DISTANCE_THRESHOLD = 0.6
+
+
+@st.cache_resource
+def load_face_model():
+    from deepface import DeepFace
+
+    return DeepFace.build_model(FACE_MODEL_NAME)
+
 
 @st.cache_resource
 def load_dlib_models():
+    import dlib
+    import face_recognition_models
+
     detector = dlib.get_frontal_face_detector()
     sp = dlib.shape_predictor(
         face_recognition_models.pose_predictor_model_location()
@@ -18,15 +31,57 @@ def load_dlib_models():
     return detector, sp, facerec
 
 
-def get_face_embeddings(image_np):
+def get_dlib_face_embeddings(image_np):
     detector, sp, facerec = load_dlib_models()
     faces = detector(image_np, 1)
-    
+
     encodings = []
     for face in faces:
         shape = sp(image_np, face)
         face_descriptor = facerec.compute_face_descriptor(image_np, shape, 1)
         encodings.append(np.array(face_descriptor))
+    return encodings
+
+
+def get_face_embeddings(image_np):
+    try:
+        from deepface import DeepFace
+    except ModuleNotFoundError:
+        try:
+            return get_dlib_face_embeddings(image_np)
+        except ModuleNotFoundError:
+            st.error(
+                "Face recognition dependencies are not installed. "
+                "Install requirements.txt, then restart Streamlit."
+            )
+            return []
+
+    load_face_model()
+
+    try:
+        faces = DeepFace.represent(
+            img_path=image_np,
+            model_name=FACE_MODEL_NAME,
+            detector_backend=FACE_DETECTOR_BACKEND,
+            enforce_detection=False,
+        )
+    except Exception as exc:
+        st.error(f"Error processing face image: {exc}")
+        return []
+
+    encodings = []
+    for face in faces:
+        embedding = face.get("embedding")
+        facial_area = face.get("facial_area") or {}
+        area = facial_area.get("w", 0) * facial_area.get("h", 0)
+        if embedding and area > 0:
+            encodings.append(np.array(embedding))
+
+    if not encodings and faces:
+        embedding = faces[0].get("embedding")
+        if embedding:
+            encodings.append(np.array(embedding))
+
     return encodings
 
 
@@ -67,7 +122,7 @@ def train_classifier():
     return bool(model_data)
 
 
-def predict_attendence(class_image_np):
+def predict_attendance(class_image_np):
     encodings = get_face_embeddings(class_image_np)
     detected_student = {}
 
@@ -79,6 +134,9 @@ def predict_attendence(class_image_np):
     clf = model_data['clf']
     X = np.array(model_data['X'])
     y = model_data['y']
+    distance_threshold = (
+        FACE_DISTANCE_THRESHOLD if X.shape[1] != 128 else DLIB_DISTANCE_THRESHOLD
+    )
 
     all_students = sorted(list(set(y)))
 
@@ -88,7 +146,7 @@ def predict_attendence(class_image_np):
             distances = np.linalg.norm(X - encoding, axis=1)
             min_dist_idx = np.argmin(distances)
             min_dist = distances[min_dist_idx]
-            if min_dist > 0.6:
+            if min_dist > distance_threshold:
                 predicted_id = None
         else:
             predicted_id = int(all_students[0])
@@ -98,7 +156,7 @@ def predict_attendence(class_image_np):
                 student_index = y.index(predicted_id)
                 student_embedding = X[student_index]
                 best_match_score = np.linalg.norm(student_embedding - encoding)
-                resemblance_threshold = 0.6
+                resemblance_threshold = distance_threshold
 
                 if best_match_score <= resemblance_threshold:
                     detected_student[predicted_id] = True
@@ -106,3 +164,6 @@ def predict_attendence(class_image_np):
                 pass
 
     return detected_student, all_students, len(encodings)
+
+
+predict_attendence = predict_attendance

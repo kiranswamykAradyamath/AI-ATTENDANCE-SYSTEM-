@@ -3,7 +3,20 @@ from html import escape
 import streamlit as st
 
 
-def subject_card(name, subject_code, section, stats=None, fotter_callback=None):
+def subject_card(
+    name,
+    subject_code=None,
+    section=None,
+    stats=None,
+    fotter_callback=None,
+    code=None,
+    footer_callback=None,
+):
+    if subject_code is None:
+        subject_code = code
+    if fotter_callback is None:
+        fotter_callback = footer_callback
+
     stats = stats or []
     safe_name = escape(str(name))
     safe_subject_code = escape(str(subject_code))

@@ -38,7 +38,7 @@ def dialog_add_photo():
             if st.session_state.get("dialog_cam_hash") != photo_hash:
                 st.session_state.attendance_images.append(Image.open(cam_photo).copy())
                 st.session_state.dialog_cam_hash = photo_hash
-                st.toast('Photo Captutred!')
+                st.toast('Photo captured!')
                 st.rerun()
 
     if st.session_state.photo_tab == 'upload':

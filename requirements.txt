@@ -4,21 +4,25 @@ streamlit>=1.58.0
 # utilities
 numpy
 pandas
-setuptools<70.0.0
 
 # face recognition
+deepface
+tf-keras
 scikit-learn
-dlib
-face-recognition-models
 
 # auth & database
 supabase==2.10.0
 bcrypt
 
 # voice/audio
+# Pin CPU-only torch first so resemblyzer does not resolve a GPU build.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.2+cpu
+torchaudio==2.2.2+cpu
 resemblyzer
 librosa
 soundfile
+webrtcvad-wheels
 opencv-python-headless
 
 # QR & image
