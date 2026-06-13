@@ -9,6 +9,18 @@ FACE_DISTANCE_THRESHOLD = 0.8
 DLIB_DISTANCE_THRESHOLD = 0.6
 
 
+def _coerce_embedding(embedding):
+    try:
+        arr = np.asarray(embedding, dtype=float)
+    except (TypeError, ValueError):
+        return None
+
+    if arr.ndim != 1 or arr.size == 0:
+        return None
+
+    return arr
+
+
 @st.cache_resource
 def load_face_model():
     from deepface import DeepFace
@@ -98,9 +110,9 @@ def get_trained_model():
         return None
 
     for student in student_db:
-        embedding = student.get("face_embedding")
-        if embedding:
-            X.append(np.array(embedding))
+        embedding = _coerce_embedding(student.get("face_embedding"))
+        if embedding is not None:
+            X.append(embedding)
             y.append(student.get("student_id"))
     
     if len(X) == 0:
@@ -109,9 +121,12 @@ def get_trained_model():
     clf = SVC(kernel="linear", probability=True, class_weight="balanced")
     
     try:
-        clf.fit(X, y)
+        if len({embedding.size for embedding in X}) == 1:
+            clf.fit(X, y)
+        else:
+            clf = None
     except ValueError:
-        pass
+        clf = None
 
     return {"clf": clf, "X": X, "y": y}
 
@@ -131,9 +146,20 @@ def predict_attendance(class_image_np):
     if not model_data:
         return {}, [], len(encodings)
         
-    clf = model_data['clf']
-    X = np.array(model_data['X'])
-    y = model_data['y']
+    X_all = model_data['X']
+    y_all = model_data['y']
+    target_dim = encodings[0].size if encodings else None
+    compatible = [
+        (embedding, student_id)
+        for embedding, student_id in zip(X_all, y_all)
+        if target_dim is not None and embedding.size == target_dim
+    ]
+
+    if not compatible:
+        return {}, [], len(encodings)
+
+    X = np.array([embedding for embedding, _ in compatible])
+    y = [student_id for _, student_id in compatible]
     distance_threshold = (
         FACE_DISTANCE_THRESHOLD if X.shape[1] != 128 else DLIB_DISTANCE_THRESHOLD
     )
@@ -141,15 +167,10 @@ def predict_attendance(class_image_np):
     all_students = sorted(list(set(y)))
 
     for encoding in encodings:
-        if len(all_students) >= 2:
-            predicted_id = int(clf.predict([encoding])[0])
-            distances = np.linalg.norm(X - encoding, axis=1)
-            min_dist_idx = np.argmin(distances)
-            min_dist = distances[min_dist_idx]
-            if min_dist > distance_threshold:
-                predicted_id = None
-        else:
-            predicted_id = int(all_students[0])
+        distances = np.linalg.norm(X - encoding, axis=1)
+        min_dist_idx = np.argmin(distances)
+        min_dist = distances[min_dist_idx]
+        predicted_id = int(y[min_dist_idx]) if min_dist <= distance_threshold else None
 
         if predicted_id is not None:
             try:
