@@ -557,19 +557,19 @@ def teacher_tab_take_attendance():
 
                     attendance_result_dialog = get_attendance_result_dialog()
                     predict_attendance = get_face_attendance_predictor()
-                    all_detected_id = {}
-
-                    for idx, img in enumerate(st.session_state.attendance_images):
-                        img_np = np.array(img.convert("RGB"))
-                        detected, _, _ = predict_attendance(img_np)
-
-                        if detected:
-                            for sid in detected.keys():
-                                student_id = int(sid)
-                                all_detected_id.setdefault(student_id, []).append(f"Photo {idx + 1}")
-
                     load_subject_students = get_subject_students_loader()
                     enrolled_students = load_subject_students(selected_subject_id)
+                    all_detected_id = {}
+
+                    if enrolled_students:
+                        for idx, img in enumerate(st.session_state.attendance_images):
+                            img_np = np.array(img.convert("RGB"))
+                            detected, _, _ = predict_attendance(img_np, enrolled_students)
+
+                            if detected:
+                                for sid in detected.keys():
+                                    student_id = int(sid)
+                                    all_detected_id.setdefault(student_id, []).append(f"Photo {idx + 1}")
 
                 if not enrolled_students:
                     st.warning("No students enrolled in this subject yet!")
