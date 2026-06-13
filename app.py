@@ -1,6 +1,6 @@
 import streamlit as st
 
-from src.database.db import DatabaseConnectionError
+
 from src.screens.home_screen import home_screen
 from src.screens.student_screen import student_screen
 from src.screens.teacher_screen import teacher_screen
@@ -15,21 +15,27 @@ def main() -> None:
         layout="wide",
     )
 
-    login_type = st.session_state.get("login_type")
-    try:
-        join_code = st.query_params.get("subject")
-        if join_code:
-            auto_enroll_dialog(join_code)
+    if 'login_type' not in st.session_state:
+        st.session_state['login_type'] = None
 
-        if login_type == "student":
-            student_screen()
-        elif login_type == "teacher":
+    match st.session_state['login_type']:
+        case 'teacher':
             teacher_screen()
-        else:
+
+        case 'student':
+            student_screen()
+        
+        case None:
             home_screen()
-    except DatabaseConnectionError as exc:
-        st.error(str(exc))
-        st.info("Your Supabase project host must resolve before login, subjects, and attendance can load.")
+
+
+    join_code = st.query_params.get('join-code') or st.query_params.get('subject')
+    if join_code:
+        if st.session_state.login_type != 'student':
+            st.session_state.login_type = 'student'
+            st.rerun()
+        if st.session_state.get('is_logged_in') and st.session_state.get('user_role') == 'student':
+            auto_enroll_dialog(join_code)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,2 @@
-cmake
-build-essential
-libboost-all-dev
+libsndfile1
+ffmpeg
