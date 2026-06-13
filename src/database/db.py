@@ -1,4 +1,8 @@
-import bcrypt
+import base64
+import hashlib
+import hmac
+import os
+
 import httpx
 
 from src.database.config import supabase
@@ -6,6 +10,18 @@ from src.database.config import supabase
 
 class DatabaseConnectionError(RuntimeError):
     pass
+
+
+PBKDF2_PREFIX = "pbkdf2_sha256"
+PBKDF2_ITERATIONS = 260000
+
+
+def _get_bcrypt():
+    try:
+        import bcrypt
+    except ModuleNotFoundError:
+        return None
+    return bcrypt
 
 
 def _execute_query(query):
@@ -19,9 +35,50 @@ def _execute_query(query):
 
 
 def hash_pass(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    bcrypt = _get_bcrypt()
+    if bcrypt:
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    salt = os.urandom(16)
+    password_hash = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode(),
+        salt,
+        PBKDF2_ITERATIONS,
+    )
+    return "$".join(
+        [
+            PBKDF2_PREFIX,
+            str(PBKDF2_ITERATIONS),
+            base64.b64encode(salt).decode(),
+            base64.b64encode(password_hash).decode(),
+        ]
+    )
 
 def check_pass(password, hash_password):
+    if not hash_password:
+        return False
+
+    if hash_password.startswith(PBKDF2_PREFIX + "$"):
+        try:
+            _, iterations, salt, stored_hash = hash_password.split("$", 3)
+            calculated_hash = hashlib.pbkdf2_hmac(
+                "sha256",
+                password.encode(),
+                base64.b64decode(salt),
+                int(iterations),
+            )
+            return hmac.compare_digest(
+                base64.b64encode(calculated_hash).decode(),
+                stored_hash,
+            )
+        except (ValueError, TypeError):
+            return False
+
+    bcrypt = _get_bcrypt()
+    if not bcrypt:
+        return False
+
     return bcrypt.checkpw(password.encode(), hash_password.encode())
 
 
