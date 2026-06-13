@@ -2,7 +2,7 @@
 streamlit>=1.58.0
 
 # utilities
-numpy
+numpy==1.26.4
 pandas
 
 # face recognition
