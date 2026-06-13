@@ -21,6 +21,46 @@ def _coerce_embedding(embedding):
     return arr
 
 
+def _student_rows(records):
+    rows = []
+    for record in records or []:
+        student = record.get("students") if isinstance(record, dict) else None
+        if student is None and isinstance(record, dict):
+            student = record
+        if isinstance(student, dict):
+            rows.append(student)
+    return rows
+
+
+def _build_model_data(student_records):
+    from sklearn.svm import SVC
+
+    X = []
+    y = []
+
+    for student in _student_rows(student_records):
+        embedding = _coerce_embedding(student.get("face_embedding"))
+        student_id = student.get("student_id")
+        if embedding is not None and student_id is not None:
+            X.append(embedding)
+            y.append(student_id)
+
+    if len(X) == 0:
+        return 0
+
+    clf = SVC(kernel="linear", probability=True, class_weight="balanced")
+
+    try:
+        if len({embedding.size for embedding in X}) == 1:
+            clf.fit(X, y)
+        else:
+            clf = None
+    except ValueError:
+        clf = None
+
+    return {"clf": clf, "X": X, "y": y}
+
+
 @st.cache_resource
 def load_face_model():
     from deepface import DeepFace
@@ -99,36 +139,12 @@ def get_face_embeddings(image_np):
 
 @st.cache_data(ttl=60, show_spinner=False)
 def get_trained_model():
-    from sklearn.svm import SVC
-    
-    X = []
-    y = []
-    
     student_db = get_all_students()
-    
+
     if not student_db:
         return None
 
-    for student in student_db:
-        embedding = _coerce_embedding(student.get("face_embedding"))
-        if embedding is not None:
-            X.append(embedding)
-            y.append(student.get("student_id"))
-    
-    if len(X) == 0:
-        return 0
-    
-    clf = SVC(kernel="linear", probability=True, class_weight="balanced")
-    
-    try:
-        if len({embedding.size for embedding in X}) == 1:
-            clf.fit(X, y)
-        else:
-            clf = None
-    except ValueError:
-        clf = None
-
-    return {"clf": clf, "X": X, "y": y}
+    return _build_model_data(student_db)
 
 
 def train_classifier():
@@ -137,11 +153,15 @@ def train_classifier():
     return bool(model_data)
 
 
-def predict_attendance(class_image_np):
+def predict_attendance(class_image_np, candidate_students=None):
     encodings = get_face_embeddings(class_image_np)
     detected_student = {}
 
-    model_data = get_trained_model()
+    model_data = (
+        _build_model_data(candidate_students)
+        if candidate_students is not None
+        else get_trained_model()
+    )
 
     if not model_data:
         return {}, [], len(encodings)
