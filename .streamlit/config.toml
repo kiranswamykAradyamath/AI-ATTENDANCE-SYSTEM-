@@ -1,0 +1,13 @@
+[server]
+# Disable file watcher on Streamlit Cloud to avoid inotify limit errors
+fileWatcherType = "none"
+# Increase max upload size for classroom photos (default is 200 MB)
+maxUploadSize = 500
+
+[runner]
+# Ensure stdout is UTF-8 so DeepFace emoji log messages don't crash on Windows
+# This is set via env var in run_app.ps1 for local dev; harmless duplicate here
+magicEnabled = true
+
+[browser]
+gatherUsageStats = false
