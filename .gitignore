@@ -1,6 +1,9 @@
-﻿# Virtual environments
+# Virtual environments
 venv/
 .venv/
+
+# Large model weight files (exceeds GitHub 100MB limit)
+.deepface/
 
 # Python cache
 __pycache__/
